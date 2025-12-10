@@ -1,76 +1,398 @@
 import streamlit as st
+import glob, os, time
+from PIL import Image
+from streamlit_autorefresh import st_autorefresh
+import streamlit.components.v1 as components
+import base64
+from pathlib import Path
+
+
+def slideshow_local():
+    # 👇 Carpeta de imágenes
+    IMAGE_DIR = Path("portfolio\Images")  # ajusta si la tienes en otro sitio
+
+    # Extensiones permitidas
+    exts = (".png", ".webp")
+
+    files = sorted([p for p in IMAGE_DIR.iterdir() if p.suffix.lower() in exts])
+
+    if not files:
+        st.error(f"No se han encontrado imágenes en {IMAGE_DIR.resolve()}")
+        return
+
+    # Construcción dinámica de las diapositivas (base64)
+    slides_html = ""
+    n = len(files)
+
+    for i, p in enumerate(files, start=1):
+        data = p.read_bytes()
+        suf = p.suffix.lower()
+
+        mime = "image/webp" if suf == ".webp" else "image/png"
+        b64 = base64.b64encode(data).decode("utf-8")
+        src = f"data:{mime};base64,{b64}"
+
+        slides_html += f"""
+        <div class="mySlide fade">
+          <div class="numbertext">{i} / {n}</div>
+
+          <div class="slide-inner">
+              <img src="{src}">
+          </div>
+
+          <!-- No caption -->
+        </div>
+        """
+
+    # Puntos de navegación
+    dots_html = "".join('<span class="dot"></span>' for _ in range(n))
+
+    html_code = f"""
+<!DOCTYPE html>
+<html>
+<head>
+
+<style>
+* {{ box-sizing: border-box; }}
+body {{ font-family: Verdana, sans-serif; margin: 0; background: transparent; }}
+
+/* Ocultar todas las slides inicialmente */
+.mySlide {{ display: none; }}
+
+/* CONTENEDOR PRINCIPAL — ANCHO MÁXIMO, ALTURA VARIABLE */
+.slideshow-container {{
+  max-width: 900px;        /* ancho máximo */
+  width: 100%;             /* ocupa todo el ancho disponible hasta 900px */
+  position: relative;
+  margin: auto;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #ffffff;      /* fondo blanco */
+  box-shadow: 0 16px 40px rgba(0,0,0,0.18);
+}}
+
+/* CONTENEDOR INTERNO DE LA IMAGEN */
+.slide-inner {{
+  width: 100%;
+  background: white;        /* fondo blanco detrás de transparencias */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px 20px 36px 20px; /* algo de aire alrededor de la imagen */
+}}
+
+/* IMAGEN — SE ADAPTA SIN CORTARSE */
+.slide-inner img {{
+  max-width: 100%;
+  height: auto;             /* altura se ajusta según la proporción */
+  object-fit: contain;      /* por si el navegador lo aplica */
+  background: white;
+}}
+
+/* Texto (caption) al pie */
+.caption {{
+  color: #000;
+  font-size: 15px;
+  padding: 6px 12px;
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  text-align: center;
+  background: rgba(255,255,255,0.85);
+}}
+
+/* Texto superior (1/5, 2/5, etc.) */
+.numbertext {{
+  color: #000;
+  font-size: 12px;
+  padding: 8px 12px;
+  position: absolute;
+  top: 0;
+}}
+
+/* Puntos inferiores */
+.dot {{
+  height: 12px;
+  width: 12px;
+  margin: 0 3px;
+  background-color: #ccc;
+  border-radius: 50%;
+  display: inline-block;
+  transition: background-color 0.6s ease, transform 0.3s ease;
+}}
+
+.active {{
+  background-color: #333;
+  transform: scale(1.25);
+}}
+
+/* Animación fade */
+.fade {{
+  animation-name: fade;
+  animation-duration: 1.2s;
+}}
+
+@keyframes fade {{
+  from {{opacity: .4}}
+  to   {{opacity: 1}}
+}}
+</style>
+
+</head>
+<body>
+
+<div class="slideshow-container">
+  {slides_html}
+</div>
+
+<br>
+
+<div style="text-align:center">
+  {dots_html}
+</div>
+
+<script>
+let currentIndex = 0;
+showSlides();
+
+function showSlides() {{
+  let i;
+  const slides = document.getElementsByClassName("mySlide");
+  const dots = document.getElementsByClassName("dot");
+
+  for (i = 0; i < slides.length; i++) {{
+    slides[i].style.display = "none";
+  }}
+
+  currentIndex++;
+  if (currentIndex > slides.length) {{ currentIndex = 1; }}
+
+  for (i = 0; i < dots.length; i++) {{
+    dots[i].className = dots[i].className.replace(" active", "");
+  }}
+
+  slides[currentIndex - 1].style.display = "block";
+  dots[currentIndex - 1].className += " active";
+
+  setTimeout(showSlides, 2500);
+}}
+</script>
+
+</body>
+</html>
+"""
+
+    components.html(html_code, height=650, scrolling=False)
+
 
 def main():
-    st.set_page_config(page_icon = "🐍", page_title = "Portfolio")
-    st.title("Mi portfolio profesional")
-    st.write("Selecciona a la izquierda la página que deseas ver.")
-    st.markdown("**Leyenda**")
-    st.markdown("- Intro = Introducción a quién soy yo como profesional")
-    st.markdown("- Projects = Enlaces y explicación breve de los proyectos que he realizado")
-    st.markdown("- Contact me = Enlace a mi LinkedIn y correo electrónico")
-    
-    bar = st.sidebar.selectbox("Selecciona una página", ["Intro", "Projects", "Contact me"])
-    if bar == "Intro":
+    st.set_page_config(page_icon="🐍", page_title="Portfolio")
+
+    bar = st.sidebar.selectbox(
+        "Selecciona una página", ["Sobre mí", "Proyectos", "Contacto"]
+    )
+    if bar == "Sobre mí":
         intro()
-    elif bar == "Projects":
+    elif bar == "Proyectos":
         projects()
-    elif bar == "Contact me":
+    elif bar == "Contacto":
         contact()
-        
+
+
 def intro():
-    st.write("¡Hola! Bienvenido a mi portfolio profesional como Científico de Datos. Aquí podrás hallar tanto los proyectos que he realizado individualmente como en cooperación estrecha con mi equipo académico.")
-    boton_1 = st.button("¿Quién soy yo?", key = "about_me")
-    if boton_1 == True:
-        c1, c2 = st.columns(2)
-        with c1:
-            st.image("venv/Data/FotoJet.jpg")
-        with c2:
-            st.write("Mi nombre es Adrián. Soy un economista graduado (y colegiado) y también un científico de datos. No creo que ambas cosas vayan por separado, pues ambas se complementan como ninguna. Aunque trabajo principalmente con Python, también sé realizar trabajos de análisis y visualización de datos en R.")
-            st.write("Aun así, al especializarme con Python, es con este lenguaje con el que soy capaz de realizar:")
-            st.markdown("- Análisis de datos")
-            st.markdown("- Visualización de datos")
-            st.markdown("- Modelos de Machine Learning y Redes Neuronales para aprendizaje supervisado y no supervisado")
-            st.markdown("- Sistemas de recomendación basados en filtro colaborativo o empleando redes neuronales")
-            st.markdown("- Algoritmos genéticos con propósitos de optimización")
-            st.markdown("- Computer Vision y NLP")
-            st.write("Además, también trabajo con Tableau para crear reportes visuales y con Streamlit para desplegar aplicaciones como este portfolio. Aunque también trabajo con Power BI, suelo preferir Tableau debido a la gratuidad de éste al trabajar como individuo. No obstante, he trabajado con Power BI y su apartado de DAX")
-            
+    st.title("Hello, world! 👋")
+    st.write("\n")
+    st.write(
+        "Soy Adrián. Soy analista y científico de datos. Estudié economía y un máster en Ciencia de Datos con la universidad Camilo José Cela (cursos y certificados aparte). He trabajado durante 2 años como analista de datos 🤓 y durante, aproximadamente, un año como científico de datos y transformador digital, trabajando para que las empresas puedan digitalizar y modernizar sus procesos internos, ganando eficiencia operativa con ello."
+    )
+    st.write(
+        "Os dejo una muestra de algunas de las tecnologías que he usado en mi día a día durante mi trayectoria profesional como analista y científico de datos:"
+    )
+    slideshow_local()
+
+
 def projects():
-    st.write("A continuación, te presento todos mis proyectos:")
-    with st.expander("Comparación de salarios ajustados por PPA"):
-        st.write("El PPA, o Paridad de Poder Adquisitivo, es una medición que sirve para que podamos comparar los salarios de diferentes regiones tomando en cuenta su poder adquisitivo.")
-        st.write("Es decir, que comparamos los salarios por todos los bienes que pueden comprar y no por si son cuantitativamente mayores o menores. Un salario de 4.000 u.m (unidades monetarias) es superior a uno de 600 u.m, ¿no?")
-        st.write("Pues depende. Si en China puedes comprar con 600 u.m lo mismo que un estadounidense con 4000 u.m, entonces no es más, sino que es lo mismo. Queremos el dinero para adquirir bienes y servicios, así que es lógico comparar quién gana más o quién tiene más por su capacidad de adquirir dichos bienes y servicios y no solo por quién parece que tiene más en cuanto a monedas.")
-        st.image("https://assets-us-01.kc-usercontent.com/fa776f1a-4d27-4a6b-ae1c-2ce928f9647d/3f823e77-d1c5-4143-b007-9ae35cf16476/wage-increase_2_cropped.jpg")
-        st.markdown("[Enlace al proyecto](https://ppp-adjusted-wage-comparator.streamlit.app/)", unsafe_allow_html=True)
-        
-    with st.expander("Predicción de precios y demandas de energía en España"):
-        st.write("Para este trabajo se tomaron los datos de la API de Red Eléctrica de España, quien es el único encargado de distribuir y abastecer en cuanto a electricidad a toda la industria española y, por consecuencia, a todos los ciudadanos españoles")
-        st.write("Hecho esto, se tomaron los datos, se limpiaron, se procesaron y se entrenaron diferentes arquitecturas de redes neuronales hasta obtener resultados altamente provechosos. Posteriormente, se pasó a hacer que estos modelos hicieran predicciones a futuro. En concreto, a un año vista.")
-        st.write("Hay que tener cuidado, eso sí, con los resultados. Pues si bien el modelo es fiable, las predicciones, cuanto más a largo plazo, más riesgo corren de ser incorrectas, pues pueden existir eventos que produzcan cambios en la tendencia y/o generen ruido blanco que antes no existía")
-        st.image("https://i.pinimg.com/originals/3a/a1/01/3aa101db445d4fe5b29e0af57fe1b660.gif")
-        st.markdown("[Enlace al proyecto](https://prediccion-redes-neuronales-ree.streamlit.app/)", unsafe_allow_html = True)
-        
-    with st.expander("Predicción de equipo ganador en League of Legends"):
-        st.write("En este proyecto se tomaron datos de partidas del famoso videojuego League of Legends y se aplicaron técnicas de reducción de dimensionalidad tales como PCA y Gaussian Random Projection con tal de simplificar el problema y llevarlo a producción, pues el proyecto consiste en preguntarle al jugador por determinados datos y que el modelo envíe una respuesta.")
-        st.write("Si tuviera que realizar 10 preguntas sería factible que el jugador las responda progresivamente. Lo que no es viable es que el jugador deba responder más de 20 preguntas en un juego que requiere respuestas rápidas y actuación eficiente.")
-        st.image("https://e00-marca.uecdn.es/assets/multimedia/imagenes/2022/03/16/16474268125074.jpg")
-        st.markdown("[Enlace al proyecto](https://lol-winner-predicter.streamlit.app/)", unsafe_allow_html = True)
-        
-    with st.expander("Otros proyectos"):
-        st.write("Estos son proyectos que, sin restarles mérito ni importancia, no tienen una versión desplegada en Streamlit, por lo que solo os puedo compartir el código subido en GitHub mediante repositorios públicos.")
-        st.markdown("- Sistema de recomendación de libros basado en filtraje colaborativo")
-        st.image("https://img.freepik.com/free-vector/hand-drawn-flat-design-stack-books-illustration_23-2149341898.jpg?w=360")
-        st.markdown("[Enlace al proyecto](https://github.com/adrianchz2001/recomendador_libros)", unsafe_allow_html = True)
-        
-        st.markdown("- Sistema de predicción de enfermedades")
-        st.image("https://media.istockphoto.com/id/1187492975/vector/magnifying-lens-viruses.jpg?s=612x612&w=0&k=20&c=TxfNgofljtO26UHj4dKh1h9k-KL8BEpfQ-M7zbIAVyQ=")
-        st.markdown("[Enlace al proyecto](https://github.com/adrianchz2001/predictor_de_enfermedades)", unsafe_allow_html = True)
-        
+    st.title("Proyectos 🔥")
+    st.write(
+        "Saber no es suficiente; hay que aplicar. Querer no es suficiente; hay que hacer"
+    )
+    st.markdown("**~ Leonardo Da Vinci**")
+    st.write(
+        "\nExplora los proyectos, ordenados de más recientes a más antiguos. "
+        "Siéntete libre de emplear filtros si estás buscando algo en concreto."
+    )
+
+    # ====== Definición de etiquetas ======
+    eda = "Análisis de datos"
+    series = "Series temporales"
+    ap_s = "Aprendizaje supervisado"
+    ap_no_s = "Aprendizaje no supervisado"
+    ap_r = "Aprendizaje por refuerzo"
+    grafos = "Análisis de grafos"
+    llm = "IA generativa y LLMs"
+    comp_vi = "Computer Vision"
+    nlp = "Natural Language Processing"
+    etl = "ETL/ELT"
+    mlops = "MLOps"
+    bases = "Bases de datos"
+
+    # ====== Datos de proyectos ======
+    projects_data = [
+        {
+            "title": "Comparación de salarios ajustados por PPA",
+            "description": (
+                "App interactiva para comparar salarios entre países ajustando por "
+                "Paridad de Poder Adquisitivo (PPA)."
+            ),
+            "image": (
+                "https://assets-us-01.kc-usercontent.com/"
+                "fa776f1a-4d27-4a6b-ae1c-2ce928f9647d/3f823e77-d1c5-4143-b007-9ae35cf16476/"
+                "wage-increase_2_cropped.jpg"
+            ),
+            "url": "https://ppp-adjusted-wage-comparator.streamlit.app/",
+            "tags": [eda, series],
+            "order": 3,
+        },
+        {
+            "title": "Predicción de precios y demandas de energía en España",
+            "description": (
+                "Modelos de redes neuronales para predecir precios y demanda eléctrica "
+                "a partir de datos de Red Eléctrica de España."
+            ),
+            "image": "https://i.pinimg.com/originals/3a/a1/01/3aa101db445d4fe5b29e0af57fe1b660.gif",
+            "url": "https://prediccion-redes-neuronales-ree.streamlit.app/",
+            "tags": [etl, series, ap_s],
+            "order": 2,
+        },
+        {
+            "title": "Predicción de equipo ganador en League of Legends",
+            "description": (
+                "Modelo que predice el equipo ganador aplicando reducción de dimensionalidad "
+                "y aprendizaje supervisado sobre datos de partidas."
+            ),
+            "image": "https://e00-marca.uecdn.es/assets/multimedia/imagenes/2022/03/16/16474268125074.jpg",
+            "url": "https://lol-winner-predicter.streamlit.app/",
+            "tags": [eda, ap_s],
+            "order": 1,
+        },
+    ]
+
+    projects_data = sorted(projects_data, key=lambda p: p["order"])
+
+    # ====== Estilos de las cards ======
+    st.markdown(
+    """
+<style>
+.project-card {
+    border-radius: 14px;
+    padding: 0;
+    overflow: hidden;
+    background: #ffffff;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    margin-bottom: 1.4rem;
+    transition: transform .15s ease, box-shadow .15s ease;
+}
+.project-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.18);
+}
+.project-image {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+    display: block;
+}
+.project-body {
+    padding: 0.7rem 0.9rem 0.9rem 0.9rem;
+}
+
+/* 🔥 Forzamos colores oscuros dentro de la card */
+.project-title {
+    margin: 0 0 0.3rem 0;
+    font-size: 1.0rem;
+    font-weight: 600;
+    color: #111111 !important;  /* título bien negro */
+}
+.project-desc {
+    margin: 0;
+    font-size: 0.88rem;
+    color: #333333 !important;  /* texto gris oscuro */
+}
+.tag-pill {
+    display: inline-block;
+    padding: 0.12rem 0.5rem;
+    border-radius: 999px;
+    background: #f1f3f5;
+    color: #444444 !important;  /* texto de la pill más oscuro */
+    font-size: 0.72rem;
+    margin-right: 0.25rem;
+    margin-top: 0.35rem;
+}
+a.project-link {
+    text-decoration: none;
+    color: inherit;
+}
+</style>
+""",
+    unsafe_allow_html=True,
+)
+
+    # ====== Filtro por etiquetas (multiselect) ======
+    all_tags = sorted({tag for p in projects_data for tag in p["tags"]})
+
+    selected_tags = st.multiselect(
+        "Filtrar por tecnología usada",
+        options=all_tags,
+        default=[],
+        help="Puedes elegir una o varias etiquetas.",
+    )
+
+    # OR lógico: proyecto válido si tiene AL MENOS una de las etiquetas seleccionadas
+    def match_project(p):
+        if not selected_tags:
+            return True
+        return bool(set(selected_tags) & set(p["tags"]))
+
+    filtered_projects = [p for p in projects_data if match_project(p)]
+
+    st.write("")  # pequeño espacio
+
+    if not filtered_projects:
+        st.info("No hay proyectos que cumplan ese filtro todavía.")
+        return
+
+    # ====== Render de cards tipo “listing item” ======
+    cols_per_row = 3
+    for i, p in enumerate(filtered_projects):
+        if i % cols_per_row == 0:
+            cols = st.columns(cols_per_row)
+        col = cols[i % cols_per_row]
+
+        with col:
+            st.markdown(
+                f"""
+<a href="{p['url']}" target="_blank" class="project-link">
+  <div class="project-card">
+    <img src="{p['image']}" class="project-image" alt="{p['title']}">
+    <div class="project-body">
+      <h4 class="project-title">{p['title']}</h4>
+      <p class="project-desc">{p['description']}</p>
+      {''.join(f'<span class="tag-pill">{t}</span>' for t in p['tags'])}
+    </div>
+  </div>
+</a>
+""",
+                unsafe_allow_html=True,
+            )
+
+
 def contact():
-    st.header("¡Hola!")
-    st.markdown("Si deseas contactarme, te dejo aquí mi [enlace a LinkedIn](https://www.linkedin.com/in/adri%C3%A1n-ch%C3%A1vez/)", unsafe_allow_html = True)
-    st.write("Mi correo electrónico es: adrianchz2001@gmail.com")
-    st.write("¡Encantado de conocerte!")
-    
+    st.title("Contáctame 📱")
+    st.markdown(
+        "Si deseas contactarme, te dejo aquí mi [enlace a LinkedIn](https://www.linkedin.com/in/adri%C3%A1n-ch%C3%A1vez/)",
+        unsafe_allow_html = True,
+    )
+    st.write("Si prefieres, puedes enviar un correo electrónico a adrianchz2001@gmail.com")
+
+
 main()
