@@ -9,7 +9,7 @@ from pathlib import Path
 
 def slideshow_local():
     # 👇 Carpeta de imágenes
-    IMAGE_DIR = Path("portfolio\Images")  # ajusta si la tienes en otro sitio
+    IMAGE_DIR = Path("Images")  # ajusta si la tienes en otro sitio
 
     # Extensiones permitidas
     exts = (".png", ".webp")
